@@ -1,10 +1,9 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import status
 from rest_framework.decorators import api_view
-from rest_framework.generics import ListCreateAPIView
+from rest_framework.generics import (ListCreateAPIView,
+                                     RetrieveUpdateDestroyAPIView)
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from tag.models import Tag
 
 from ..models import Recipe
@@ -21,26 +20,15 @@ class RecipeAPIv2List(ListCreateAPIView):
     pagination_class = RecipeAPIv2Pagination
 
 
+class RecipeAPIv2Detail(RetrieveUpdateDestroyAPIView):
+    queryset = Recipe.objects.get_published()
+    serializer_class = RecipeSerializer
+    pagination_class = RecipeAPIv2Pagination
 
-class RecipeAPIv2Detail(APIView):
-    def get_recipe(self, pk):
-        recipe = get_object_or_404(
-            Recipe.objects.get_published(),
-            pk=pk
-        )
-        return recipe
+    def patch(self, request, *args, **kwargs):
+        pk = kwargs.get('pk')
 
-    def get(self, request, pk):
-        recipe = self.get_recipe(pk)
-        serializer = RecipeSerializer(
-            instance=recipe,
-            many=False,
-            context={'request': request},
-        )
-        return Response(serializer.data)
-
-    def patch(self, request, pk):
-        recipe = self.get_recipe(pk)
+        recipe = self.get_queryset().filter(pk=pk).first()
         serializer = RecipeSerializer(
             instance=recipe,
             data=request.data,
@@ -53,11 +41,6 @@ class RecipeAPIv2Detail(APIView):
         return Response(
             serializer.data,
         )
-
-    def delete(self, request, pk):
-        recipe = self.get_recipe(pk)
-        recipe.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view()
